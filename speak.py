@@ -6,3 +6,4 @@ if __name__=='__main__':
     text = str(sys.argv[1])
     engine.say(text)
     engine.runAndWait()
+    exit()

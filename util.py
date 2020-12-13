@@ -24,15 +24,18 @@ user_dict={
 }
 
 assistant_dict={
-    "wish" : ["hello", "Hi", "hey"],
+    "wish" : ["hello", "Hi", "hey", "good to see you"],
     "leave": ["see you","I will Miss you", "Have a good day", "have a nice day"]
 }
 
 math_words = ['plus', 'minus', 'divide', 'times', 'multiply', 'subract', 
               'derivative', 'integral', 'sin', 'cosine', 'cos', 'secant','sec', 'tan',
-              'remainder', 'modulus', 'less than', 'greater than', 'equals']
-
+              'remainder', 'modulus', 'less than', 'greater than', 'equals', 'value']
 math_symbols = ['+', '-', '/', '*', '%', '=']
+numbers = [1,2,3,4,5,6,7,8,9,0]
+gen_variables=['x','y','z']
+
+stop_words = ['is','what', 'of', 'to', 'the']
 
 spell = SpellChecker()
 
@@ -47,14 +50,21 @@ def open(cmd):
             url=i
         webbrowser.get().open(url)
 
+def wish():
+    return random.choice(assistant_dict["wish"])
+
 def leave():
     return random.choice(assistant_dict["leave"])
 
 def math_in_cmd(cmd):
     split_cmd = cmd.split()
+    for cmd in split_cmd:
+        if cmd in stop_words:
+            split_cmd.remove(cmd)
+
     count=0
     for i in split_cmd:
-        if i in math_symbols or i in math_words:
+        if i in math_symbols or i in math_words or i in numbers or i in gen_variables:
             count+=1
     return count/len(split_cmd)
 
@@ -62,6 +72,9 @@ def get_wolframalpha_ans(cmd):
     res=client.query(cmd)
     wolfram_res=next(res.results).text
     return wolfram_res
+
+def get_stock_price(query):
+    return scrapper.get_stock_price(query)
 
 
 def get_IMDb_url(cmd):

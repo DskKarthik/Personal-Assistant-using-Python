@@ -4,6 +4,7 @@ import requests
 from googlesearch import search
 from urllib.request import FancyURLopener
 import webbrowser
+import urllib
 
 class AppURLopener(FancyURLopener):
     version = "Mozilla/5.0"
@@ -131,4 +132,26 @@ def IMDb_Scrapper(url):
     engine.runAndWait()'''
 
     return title+" "+year+" "+sub_text+". Rating, "+rating+" out of 10."
+
+def get_stock_price(query):
+    user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
+    headers={'User-Agent':user_agent,}
+
+    for i in search(query, tld='co.in', stop=20):
+        if 'finance.yahoo' in i:
+            url = i
+            break
+    
+    #url = "https://in.finance.yahoo.com/quote/BHARTIARTL.NS"
+    request=urllib.request.Request(url,None,headers) #The assembled request
+    response = urllib.request.urlopen(request)
+
+    html = response.read()
+    soup = BeautifulSoup(html, "html.parser")
+    page = soup.find('div', id="mrt-node-Lead-3-QuoteHeader")
+
+    price = page.find('span', class_="Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)").text
+    change = page.find('span', class_="Trsdu(0.3s) Fw(500) Pstart(10px) Fz(24px) C($negativeColor)").text
+
+    return price, change
 

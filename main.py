@@ -1,3 +1,4 @@
+import re
 import speech_recognition as sr
 import time
 import wolframalpha
@@ -7,12 +8,11 @@ from subprocess import call
 import PySimpleGUI as sg
 import os
 
-client = wolframalpha.Client('YUWKQG-J5889WW4WV')
 r=sr.Recognizer()
 
 NAME = "Karthik"
 
-def say(text,print_=False):
+def say(text,speak_thread, print_=False):
     if print_:
         l=len(text)
 
@@ -24,21 +24,24 @@ def say(text,print_=False):
     try:
         speak_thread.start()
     except:
-        time.sleep(500)
+        print("Waiting.")
+        time.sleep(0.5)
         speak_thread.start()
 
 def speak(phrase):
     call(["python", r"C:\Python Projects\Normal\NLP_Project\speak.py", phrase])
 
-speak_thread = threading.Thread(target=speak)
 
 def take_voice_command():
+    
     with sr.Microphone() as source:
+        # LISTEN FOR AUDIO
         r.adjust_for_ambient_noise(source, duration=0.5)
         input("Press Enter to Activate: ")
         print("Listening...")
         audio=r.listen(source)
 
+        # CONVERT AUDIO (SPEECH) TO TEXT
         try:
             text=r.recognize_google(audio)
         except:
@@ -46,60 +49,89 @@ def take_voice_command():
         
     return text
 
-def respond(cmd):
+def respond(cmd, speak_thread):
     
-    if "price" in cmd:
-        text = util.search_price(cmd)
-        say(text)
-        return
+    # PROCESS THE COMMAND
     
-    if "what is the time" in cmd or "what time is it" in cmd:
+    if re.match("(what|show|tell).*time.*",cmd):
         ctime= time.ctime()
-        say(ctime,print_=True)
+        say(ctime, speak_thread, print_=True)
         return
     
-    if 'open' in cmd:
+    if re.match(".*open[ ].*", cmd):
         util.open(cmd)
-        say(cmd.replace('open','opening'))
+        say(cmd.replace('open','opening'), speak_thread)
         return
     
-    if 'joke' in cmd or 'bored' in cmd:
+    if re.match("(.*(tell|say|show).*joke)|([iI].*[ ]bored)", cmd):
         joke = util.get_joke()
         text = "Ok, I got you a joke"+". "+joke
-        say(text, print_=True)
+        say(text, speak_thread, print_=True)
         return
     
-    if 'play music' in cmd:
+    if re.match(".*play.*music.*", cmd):
         util.show_songs_list()
         choice = int(input("Select your song (number):"))
         isError = util.play_song(choice)
         if isError:
             print("Please select correct song number..")
-            respond("play music")
+            respond("play music",speak_thread)
         return
     
-    if 'stop music' in cmd:
+    if re.match(".*stop.*music.*", cmd):
         util.stop_music()
         print("Stopping Music...\n")
+        return
     
-    if 'movie' in cmd or 'review' in cmd or 'imdb' in cmd.lower():
+    if re.match(".*movie|review|imdb.*", cmd.lower()):
         IMBb_url = util.get_IMDb_url(cmd)
         IMDb_summary = util.get_IMDb_summary(IMBb_url)
-        say(IMDb_summary)
+        say(IMDb_summary,speak_thread)
         return
-    '''
-    if util.math_in_cmd(cmd) > 0.25:
-        wolfram_res = util.get_wolframalpha_ans(cmd)
-        say(wolfram_res, print_=True)'''
     
+    if re.match('stock|share', cmd.lower()):
+        price, change = util.get_stock_price(cmd)
+        say(f"Price: {price}. Gain or loss: {change}", speak_thread,print_=True)
+        return
+    
+    if "price" in cmd:
+        text = util.search_price(cmd)
+        say(text, speak_thread)
+        return
+    
+    if re.match(".*shut([]|[ ])down.*", cmd):
+        shutdown = input("Are you sure? (Yes (Y)| No (N))")
+        if shutdown:
+            os.system("shutdown /s /t 1") 
+        return
+    
+    if util.math_in_cmd(cmd) > 0.33:
+        wolfram_res = util.get_wolframalpha_ans(cmd)
+        say(wolfram_res, speak_thread, print_=True)
+        return
+    
+    for word in util.user_dict["wish"]:
+        if word in cmd:
+            say(util.wish()+" "+NAME,speak_thread)
+            return
+
     for word in util.user_dict["leave"]:
         if word in cmd:
-            say(util.leave()+ " "+ NAME)
+            say(util.leave()+ " "+ NAME,speak_thread)
             util.clear_screen()
             exit()
+    
+    if re.match(".*how are you.*", cmd.lower()):
+        say('I am fine', speak_thread)
+        return 
+    
+    if re.match(".*what.*your[ ]name.*", cmd.lower()):
+        say("I dont have any name yet. You can call me as your wish and I'll respond", speak_thread)
+        return
 
+    # If no match, show a a search page on the query.
     util.search_query(cmd)
-    say("Here are few results")
+    say("Here are few results",speak_thread)
 
 def transfer_command():
     choice=input("Voice (V) | Text (T). Enter your choice: ")
@@ -120,20 +152,24 @@ def commandLine():
             say(cmd)
         else:
             print("[YOU] : ",cmd)
-            if util.math_in_cmd(cmd) > 0.25:
+            speak_thread = threading.Thread(target=speak)
+
+            if util.math_in_cmd(cmd) >= 0.33:
                 res = util.get_wolframalpha_ans(cmd)
-                say(res, print_=True)
+                say(res, speak_thread,print_=True)
             else:
                 corrected_text = util.get_corrected_sentence(cmd).lower().strip()
                 if corrected_text != cmd:
                     print('Did you mean : "{}" ?'.format(corrected_text))
-                    say("Did you mean this?")
+                    say("Did you mean this?",speak_thread)
                     choice = input("Yes (Y) | No (N) ? :")
                     if choice.lower() in ['yes','y']:
                         cmd = corrected_text
                 
+                speak_thread = threading.Thread(target=speak)
+                #print(speak_thread.is_alive())
                 st = time.time()
-                respond(cmd)
+                respond(cmd, speak_thread)
                 et = time.time()
                 print("(Result in {} seconds)\n".format(round(et-st,2)))
 

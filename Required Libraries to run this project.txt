@@ -1,0 +1,13 @@
+speech_recognition
+import pyttsx3
+webbrowser
+pyjokes
+spellchecker
+googlesearch
+wolframalpha
+re
+urllib
+bs4
+requests
+random
+time, threading, os, subprocess, sys, winsound
